@@ -58,7 +58,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { gsap } from 'gsap'
-import { meta, pilar } from '../data/budaya.js'
+import { meta, pilar } from '../data/Budaya.js'
 
 const root = ref(null)
 const batik = ref(null)
