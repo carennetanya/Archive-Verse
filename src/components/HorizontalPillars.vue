@@ -57,7 +57,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
-import { pilar } from '../data/budaya.js'
+import { pilar } from '../data/Budaya.js'
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)
 
