@@ -1,0 +1,61 @@
+/* ============================================================================
+   Culture Verse — Design Tokens
+   Bahasa visual diwarisi dari intro gerbang: gelap, emas, aksara, ornamen Jawa.
+   ============================================================================ */
+:root {
+  /* Warna inti */
+  --cv-bg:        #0d0804;   /* hitam kecoklatan, dasar */
+  --cv-bg-2:      #160d05;   /* panel sedikit lebih terang */
+  --cv-ink:       #1a0f06;
+
+  --cv-gold:      #e6a020;   /* emas utama */
+  --cv-gold-soft: #c8860a;   /* emas redup */
+  --cv-gold-deep: #7a5c2e;   /* emas gelap untuk teks sekunder */
+  --cv-amber:     #ffd24a;   /* sorot terang */
+  --cv-cream:     #f3e6c8;   /* teks terang */
+
+  --cv-jade:      #1d9e75;   /* aksen hijau (jarang, untuk kontras) */
+  --cv-blue:      #378add;   /* aksen biru (permata) */
+
+  --cv-text:      #d8c39a;   /* teks tubuh */
+  --cv-text-dim:  #a07840;   /* teks samar */
+
+  /* Tipografi */
+  --cv-font-display: 'Cormorant Garamond', 'Noto Serif', serif;
+  --cv-font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
+  --cv-font-aksara:  'Noto Serif Javanese', serif;
+  --cv-font-mono:    'Courier New', monospace;
+
+  /* Ritme */
+  --cv-maxw: 1200px;
+  --cv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--cv-bg);
+  color: var(--cv-text);
+  font-family: var(--cv-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* utilitas teks aksara */
+.cv-aksara { font-family: var(--cv-font-aksara); }
+
+/* garis pemisah ornamen */
+.cv-divider {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--cv-gold-soft);
+}
+.cv-divider::before, .cv-divider::after {
+  content: ''; height: 1px; flex: 1;
+  background: linear-gradient(90deg, transparent, var(--cv-gold-soft), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
