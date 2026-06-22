@@ -6,7 +6,7 @@
     Prop `side` = 'left' | 'right'. Sisi kanan otomatis di-mirror agar
     menghadap ke tengah layar (ke arah topeng).
   -->
-  <div class="wayang" :class="[`side-${side}`, { entered }]" :style="rootStyle">
+  <div class="wayang" :class="[`side-${side}`, { entered, 'dalang-play': playing }]" :style="rootStyle">
     <div class="wayang-stage">
       <!-- urutan z dari belakang ke depan -->
 
@@ -44,12 +44,13 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  side:  { type: String, default: 'left' },      // 'left' | 'right'
+  side:  { type: String, default: 'left' },      // 'left' | 'right' | 'center'
   width: { type: Number, default: 300 },          // lebar tampil (px)
   // pergeseran posisi (px) terhadap titik tempel default di tepi bawah
   offsetX: { type: Number, default: 0 },
   offsetY: { type: Number, default: 0 },
   entered: { type: Boolean, default: true },      // true = sudah masuk layar
+  playing: { type: Boolean, default: false },     // true = digerakkan dalang (ekspresif)
 })
 
 const rootStyle = computed(() => ({
@@ -76,10 +77,16 @@ const rootStyle = computed(() => ({
 }
 .wayang.side-left  { left:  0; transform: translate(calc(-28% + var(--ox)), calc(6% + var(--oy))); }
 .wayang.side-right { right: 0; transform: translate(calc(28%  + var(--ox)), calc(6% + var(--oy))) scaleX(-1); }
+/* di TENGAH layar (untuk pembuka cerita yang dimainkan dalang) */
+.wayang.side-center {
+  left: 50%; bottom: 50%;
+  transform: translate(calc(-50% + var(--ox)), calc(50% + var(--oy)));
+}
 
 /* keadaan belum masuk: meluncur keluar dari tepi + transparan */
 .wayang:not(.entered).side-left  { transform: translate(-120%, 8%); opacity: 0; }
 .wayang:not(.entered).side-right { transform: translate(120%, 8%) scaleX(-1); opacity: 0; }
+.wayang:not(.entered).side-center { transform: translate(-50%, calc(50% + 30px)); opacity: 0; }
 
 /* ayun halus seluruh badan (gantungan wayang) */
 .wayang-stage {
@@ -162,6 +169,34 @@ const rootStyle = computed(() => ({
 @keyframes forearmLBend {
   0%,100% { transform: rotate(1.5deg); }
   50%     { transform: rotate(-3deg); }
+}
+
+/* ─── Mode "dimainkan dalang": tangan naik-turun lebih lebar & cepat,
+       badan lebih goyang — seperti pertunjukan wayang yang sedang dimainkan ─ */
+.wayang.dalang-play .armR    { animation: dalangArmR 1.8s ease-in-out infinite; }
+@keyframes dalangArmR {
+  0%,100% { transform: rotate(8deg); }     /* tangan turun */
+  50%     { transform: rotate(-26deg); }   /* tangan terangkat tinggi */
+}
+.wayang.dalang-play .forearmR { animation: dalangForeR 1.8s ease-in-out infinite; }
+@keyframes dalangForeR {
+  0%,100% { transform: rotate(-4deg); }
+  50%     { transform: rotate(8deg); }
+}
+.wayang.dalang-play .armL    { animation: dalangArmL 2.1s ease-in-out infinite; }
+@keyframes dalangArmL {
+  0%,100% { transform: rotate(-6deg); }
+  50%     { transform: rotate(22deg); }
+}
+.wayang.dalang-play .forearmL { animation: dalangForeL 2.1s ease-in-out infinite; }
+@keyframes dalangForeL {
+  0%,100% { transform: rotate(3deg); }
+  50%     { transform: rotate(-7deg); }
+}
+.wayang.dalang-play .wayang-stage { animation: dalangSway 2.4s ease-in-out infinite; }
+@keyframes dalangSway {
+  0%,100% { transform: rotate(-2.2deg) translateY(0); }
+  50%     { transform: rotate(2.2deg) translateY(-1%); }
 }
 
 /* ── Stick / tongkat: tetap tegak, hanya goyang amat halus di titik pegang ── */

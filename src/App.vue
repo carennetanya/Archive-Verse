@@ -3,17 +3,22 @@
     <!-- 1. Splash headphone -->
     <SplashScreen v-if="phase === 'splash'" @done="phase = 'loading'" />
 
-    <!-- 2. Loading screen kawung -->
+    <!-- 2. Loading screen kawung + gerbang -->
     <Transition name="fadein">
-      <LoadingScreen v-if="phase === 'loading'" @done="phase = 'entrance'" />
+      <LoadingScreen v-if="phase === 'loading'" @done="phase = 'story'" />
     </Transition>
 
-    <!-- 3. Grand Entrance -->
+    <!-- 3. Cerita budaya sinematik (setelah gerbang terbuka) -->
+    <Transition name="fadein">
+      <CulturalStory v-if="phase === 'story'" @done="phase = 'entrance'" />
+    </Transition>
+
+    <!-- 4. Grand Entrance (tampilan wayang) -->
     <Transition name="fadein">
       <GrandEntrance v-if="phase === 'entrance'" @done="phase = 'home'" />
     </Transition>
 
-    <!-- 4. Home Page -->
+    <!-- 5. Home Page -->
     <Transition name="fadein">
       <HomePage v-if="phase === 'home'" />
     </Transition>
@@ -24,6 +29,7 @@
 import { ref } from 'vue'
 import SplashScreen  from './components/SplashScreen.vue'
 import LoadingScreen from './components/LoadingScreen.vue'
+import CulturalStory from './components/CulturalStory.vue'
 import GrandEntrance from './components/GrandEnterance.vue'
 import HomePage      from './components/HomePage.vue'
 

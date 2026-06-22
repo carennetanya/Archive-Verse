@@ -9,7 +9,7 @@
     </Transition>
 
     <!-- Sun screen: matahari + partikel + wiwara -->
-    <div v-if="showSunScreen" class="sun-screen">
+    <div v-if="showSunScreen" class="sun-screen" :class="{ 'zoom-in': gateZooming }">
 
       <!-- tsParticles container -->
       <div id="tsparticles" class="particles-container"></div>
@@ -221,6 +221,9 @@
       </div>
     </div>
 
+    <!-- Kawanan burung siluet emas — di luar sun-screen agar tak ikut ter-zoom -->
+    <canvas ref="birdsCanvas" class="birds-canvas"></canvas>
+
     <!-- Loading UI utama -->
     <div class="loading-container" v-show="!showSunScreen">
       <div class="title-aksara fade-in" :class="{ visible: show }">ꦥꦸꦱꦏ</div>
@@ -275,6 +278,8 @@ const showSunBtn        = ref(false)
 const entering          = ref(false)
 const blackOverlay      = ref(false)
 const showSunScreen     = ref(false)
+const gateZooming       = ref(false)
+const birdsCanvas       = ref(null)
 const showSuryaText     = ref(false)
 const sunExplode        = ref(false)
 const sunBurst          = ref(false)
@@ -478,6 +483,119 @@ function drawKawung() {
   ctx.globalAlpha=1
 }
 
+// ─── Kawanan burung siluet emas ─────────────────────────────────────────────
+let birdsRaf = null
+let birds = []
+let birdsStartT = 0
+let birdsAudio = null
+
+function makeBird(i, W, H) {
+  // semua lahir dari area tengah (mulut gerbang), lalu menyebar keluar layar
+  const cx = W / 2, cy = H * 0.5
+  const angle = (Math.random() - 0.5) * Math.PI * 1.1 - Math.PI / 2 // condong ke atas & menyebar
+  const speed = 2.6 + Math.random() * 4.2
+  // sebagian kecil burung "dekat kamera": besar & cepat (buat efek nutupin layar)
+  const near = Math.random() < 0.18
+  const scale = near ? 2.6 + Math.random() * 2.2 : 0.5 + Math.random() * 1.1
+  return {
+    x: cx + (Math.random() - 0.5) * 80,
+    y: cy + (Math.random() - 0.5) * 120,
+    vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 1.5,
+    vy: Math.sin(angle) * speed - (0.5 + Math.random()), // cenderung naik
+    scale,
+    near,
+    flap: Math.random() * Math.PI * 2,
+    flapSpeed: 0.22 + Math.random() * 0.18,
+    delay: Math.random() * 0.9,        // spawn bertahap, bukan barengan
+    alpha: 0,
+  }
+}
+
+function drawBird(ctx, b) {
+  // siluet burung sederhana: dua sayap yang mengepak (sudut sayap dari flap)
+  const wing = Math.sin(b.flap) // -1..1
+  const s = b.scale * 9
+  ctx.save()
+  ctx.translate(b.x, b.y)
+  // hadap ke arah gerak
+  ctx.rotate(Math.atan2(b.vy, b.vx))
+  ctx.globalAlpha = b.alpha
+  // gradasi emas; burung dekat kamera lebih gelap (siluet) biar nutup layar
+  ctx.fillStyle = b.near ? 'rgba(120,82,20,0.95)' : 'rgba(230,160,32,0.9)'
+  const wy = wing * s * 0.9       // tinggi ujung sayap
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.quadraticCurveTo(-s * 0.5, -wy * 0.4, -s, -wy)      // sayap kiri
+  ctx.quadraticCurveTo(-s * 0.45, wy * 0.1, 0, s * 0.18)  // badan bawah
+  ctx.quadraticCurveTo(s * 0.45, wy * 0.1, s, -wy)        // sayap kanan
+  ctx.quadraticCurveTo(s * 0.5, -wy * 0.4, 0, 0)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+}
+
+function startBirds() {
+  const c = birdsCanvas.value
+  if (!c) return
+  const ctx = c.getContext('2d')
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const W = window.innerWidth, H = window.innerHeight
+  c.width = W * dpr; c.height = H * dpr
+  c.style.width = W + 'px'; c.style.height = H + 'px'
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+  const COUNT = Math.round((W / 1400) * 70) + 40  // kawanan besar, skala layar
+  birds = Array.from({ length: COUNT }, (_, i) => makeBird(i, W, H))
+  birdsStartT = performance.now()
+
+  // suara kepakan/burung — taruh file di /public/audio/birds.mp3
+  try {
+    birdsAudio = new Audio('/birds.mp3')
+    birdsAudio.volume = 0
+    birdsAudio.play().then(() => gsapVol(birdsAudio, 0.6, 600)).catch(() => {})
+  } catch (e) { /* tanpa suara pun tetap jalan */ }
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduce) { ctx.clearRect(0, 0, W, H); return }
+
+  const loop = (t) => {
+    birdsRaf = requestAnimationFrame(loop)
+    const elapsed = (t - birdsStartT) / 1000
+    ctx.clearRect(0, 0, W, H)
+    for (const b of birds) {
+      if (elapsed < b.delay) continue
+      // fade-in tiap burung saat lahir
+      b.alpha = Math.min(1, b.alpha + 0.05)
+      b.x += b.vx
+      b.y += b.vy
+      b.vy -= 0.012                 // sedikit melambung naik
+      b.flap += b.flapSpeed
+      drawBird(ctx, b)
+    }
+  }
+  birdsRaf = requestAnimationFrame(loop)
+}
+
+// fade volume audio sederhana tanpa dependency
+function gsapVol(audio, target, ms) {
+  const start = performance.now(), from = audio.volume
+  const step = (t) => {
+    const k = Math.min(1, (t - start) / ms)
+    audio.volume = from + (target - from) * k
+    if (k < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
+// putar efek suara sekali (gerbang buka/tutup, dll). Aman jika file belum ada.
+function playSfx(src, volume = 0.7) {
+  try {
+    const a = new Audio(src)
+    a.volume = volume
+    a.play().catch(() => {})
+  } catch (e) { /* abaikan kalau file tak ada */ }
+}
+
 // ─── Main enter sequence ───────────────────────────────────────────────────────
 function handleEnter() {
   if (entering.value) return
@@ -502,10 +620,9 @@ function handleEnter() {
 
   // 5400ms — matahari mulai "tarik napas" mengecil sedikit (anticipation) lalu mekar
   //           class .sun-exploding memicu animasi sunGrow yang sudah multi-stage
-  setTimeout(async () => {
+  setTimeout(() => {
     sunExplode.value = true
-    // bara dipekatkan jadi nyala lembut mengalir keluar, bukan letusan
-    await loadTsParticles(bloomCfg)
+    // (percikan kedua dihilangkan — partikel hanya muncul sekali di awal)
   }, 5400)
 
   // 6100ms — glow burst radial menyusul puncak mekar (telat dikit biar terasa "mengalir")
@@ -515,7 +632,10 @@ function handleEnter() {
   setTimeout(() => { showWiwara.value = true }, 7600)
 
   // 8000ms — gerbang MENUTUP (panel meluncur masuk dari kiri & kanan ke tengah)
-  setTimeout(() => { wiwararClosed.value = true }, 8000)
+  setTimeout(() => {
+    wiwararClosed.value = true
+    playSfx('/door-close.mp3', 0.7)
+  }, 8000)
 
   // 9700ms — teks Wiwara muncul di tengah gerbang tertutup
   setTimeout(() => { wiwaraLabelVisible.value = true }, 9700)
@@ -534,8 +654,23 @@ function handleEnter() {
     wiwaraOpen.value = true
   }, 12800)
 
-  // 14900ms — masuk halaman
-  setTimeout(() => { emit('done') }, 14900)
+  // 13500ms — suara gerbang buka (telat dari mulai animasi biar derit-nya pas
+  //           saat panel sudah meluncur, tidak kecepetan)
+  setTimeout(() => {
+    playSfx('/door-open.mp3', 0.7)
+  }, 13500)
+
+  // 13100ms — kawanan burung menyembur keluar dari mulut gerbang
+  setTimeout(() => { startBirds() }, 13100)
+
+  // 13600ms — kamera "masuk" menembus gerbang: zoom-in smooth ke tengah
+  //           sementara panel sudah membuka, scene di-scale perlahan + fade
+  setTimeout(() => {
+    gateZooming.value = true
+  }, 13600)
+
+  // 16400ms — masuk halaman (setelah zoom selesai menyatu)
+  setTimeout(() => { emit('done') }, 16400)
 }
 
 onMounted(() => {
@@ -559,6 +694,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearInterval(interval)
   cancelAnimationFrame(fbRAF)
+  cancelAnimationFrame(birdsRaf)
+  birdsAudio?.pause()
   window.removeEventListener('resize', drawKawung)
   tsParticlesInstance?.destroy()
 })
@@ -577,11 +714,32 @@ onBeforeUnmount(() => {
 .blackout-enter-from { opacity: 0; }
 .blackout-enter-to   { opacity: 1; }
 
+/* ── Kawanan burung ── */
+.birds-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  z-index: 105;            /* di atas sun-screen (101) supaya terbang bebas */
+  pointer-events: none;
+}
+
 /* ── Sun screen ── */
 .sun-screen {
   position: absolute; inset: 0; background: #000;
   display: flex; align-items: center; justify-content: center;
   z-index: 101; overflow: hidden;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+}
+/* Kamera "masuk" menembus gerbang: zoom-in smooth + sedikit blur & fade di akhir
+   sehingga menyatu mulus ke layar berikutnya (cerita budaya). */
+.sun-screen.zoom-in {
+  animation: gateZoomIn 2.8s cubic-bezier(0.6, 0, 0.35, 1) forwards;
+}
+@keyframes gateZoomIn {
+  0%   { transform: scale(1);    opacity: 1; filter: blur(0px); }
+  55%  { transform: scale(2.4);  opacity: 1; filter: blur(0px); }
+  80%  { transform: scale(4.2);  opacity: 0.85; filter: blur(1.5px); }
+  100% { transform: scale(7);    opacity: 0;   filter: blur(6px); }
 }
 
 /* ── tsParticles container ── */
